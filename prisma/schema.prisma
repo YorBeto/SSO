@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model active_sessions {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id          String         @db.Uuid
+  access_token_jti String         @db.VarChar(255)
+  refresh_token_id String         @db.Uuid
+  device_name      String?        @db.VarChar(100)
+  last_activity_at DateTime       @db.Timestamptz(6)
+  expires_at       DateTime       @db.Timestamptz(6)
+  created_at       DateTime?      @default(now()) @db.Timestamptz(6)
+  refresh_tokens   refresh_tokens @relation(fields: [refresh_token_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users            users          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model auth_audit_logs {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String?          @db.Uuid
+  event      audit_event_type
+  details    String?
+  created_at DateTime?        @default(now()) @db.Timestamptz(6)
+  users      users?           @relation(fields: [user_id], references: [id], onUpdate: NoAction)
+}
+
+model otp_codes {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  code       String    @db.VarChar(6)
+  expires_at DateTime  @db.Timestamptz(6)
+  is_used    Boolean?  @default(false)
+  attempts   Int?      @default(0)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model persons {
+  id                 String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  first_name         String      @db.VarChar(50)
+  paternal_last_name String      @db.VarChar(25)
+  maternal_last_name String?     @db.VarChar(25)
+  birth_date         DateTime?   @db.Date
+  gender             gender_type
+  address            String?     @db.VarChar(100)
+  created_at         DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?   @default(now()) @db.Timestamptz(6)
+  deleted_at         DateTime?   @db.Timestamptz(6)
+  users              users[]
+}
+
+model refresh_tokens {
+  id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id         String            @db.Uuid
+  token_hash      String            @db.VarChar(255)
+  expires_at      DateTime          @db.Timestamptz(6)
+  revoked_at      DateTime?         @db.Timestamptz(6)
+  created_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?         @default(now()) @db.Timestamptz(6)
+  active_sessions active_sessions[]
+  users           users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model users {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  person_id         String            @db.Uuid
+  email             String            @unique @db.VarChar(60)
+  phone             String            @unique @db.VarChar(10)
+  password_hash     String            @db.VarChar(255)
+  two_factor_method Boolean?          @default(false)
+  is_active         Boolean?          @default(true)
+  failed_attempts   Int?              @default(0)
+  blocked_until     DateTime?         @db.Timestamptz(6)
+  last_login_at     DateTime?         @db.Timestamptz(6)
+  created_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime?         @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime?         @db.Timestamptz(6)
+  active_sessions   active_sessions[]
+  auth_audit_logs   auth_audit_logs[]
+  otp_codes         otp_codes[]
+  refresh_tokens    refresh_tokens[]
+  persons           persons           @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum audit_event_type {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  OTP_REQUESTED
+  OTP_VALIDATED
+  OTP_FAILED
+  LOGOUT
+  BLOCKED
+  PASSWORD_CHANGED
+}
+
+enum gender_type {
+  M
+  F
+}
