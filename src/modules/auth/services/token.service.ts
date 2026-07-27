@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../../prisma/prisma.service.js';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../../prisma/prisma.service.js';
 
 @Injectable()
 export class TokenService {
@@ -10,8 +10,15 @@ export class TokenService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async createAndStoreTokens(userId: string, email: string, personId: string) {
-    const payload = { sub: userId, email, person_id: personId };
+  async createAndStoreTokens(userId: string, email: string, person: any) {
+    const payload = {
+      sub: userId,
+      email,
+      person_id: person?.id || person, // Soporta recibir la entidad o solo la cadena de ID
+      firstName: person?.first_name || '',
+      paternalLastName: person?.paternal_last_name || '',
+      maternalLastName: person?.maternal_last_name || '',
+    };
 
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET || 'SecretKey',
@@ -83,8 +90,10 @@ export class TokenService {
       data: { revoked_at: new Date() },
     });
 
+    // 💡 Traemos al usuario incluyendo la relación de 'persons' para regenerar el token completo
     const user = await this.prisma.users.findUnique({
       where: { id: payload.sub },
+      include: { persons: true },
     });
 
     if (!user || !user.is_active) {
@@ -95,7 +104,7 @@ export class TokenService {
       });
     }
 
-    const tokens = await this.createAndStoreTokens(user.id, user.email, user.person_id);
+    const tokens = await this.createAndStoreTokens(user.id, user.email, user.persons);
 
     return {
       access_token: tokens.accessToken,

@@ -147,7 +147,7 @@ export class AuthService {
       await this.tokenService.createAndStoreTokens(
         user.id,
         user.email,
-        user.person_id,
+        user.persons,
       );
 
     const userPerson = user as typeof user & { persons: any };
