@@ -52,7 +52,7 @@ export class AccountActivationService {
         this.otpService.markAsUsed(otpId),
       ]);
 
-      await this.auditService.logEvent('OTP_VERIFIED', {
+      await this.auditService.logEvent('OTP_VALIDATED', {
         userId: user.id,
         email: user.email,
         details: 'Cuenta activada correctamente por primera vez',
