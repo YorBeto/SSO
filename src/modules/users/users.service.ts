@@ -7,7 +7,7 @@ import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { MailerService } from '@nestjs-modules/mailer';
+import { MailService } from '../mail/mail.service.js'; // <-- Importar tu MailService
 import { OtpService } from '../otp/otp.service.js'; 
 
 @Injectable()
@@ -15,7 +15,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailerService: MailerService,
+    private readonly mailService: MailService, // <-- Inyectar MailService
     private readonly otpService: OtpService, 
   ) {}
 
@@ -33,10 +33,12 @@ export class UsersService {
       two_factor_enabled,
     } = dto;
 
-    // 1. Validar correo duplicado (AUTH-009 / HTTP 409)
+    // 1. Validar correo o teléfono duplicado
+    const cleanPhone = phone ? phone.replace('+52', '').trim() : phone;
+
     const existingUser = await this.prisma.users.findFirst({
       where: {
-        OR: [{ email }, ...(phone ? [{ phone }] : [])],
+        OR: [{ email }, ...(cleanPhone ? [{ phone: cleanPhone }] : [])],
       },
     });
 
@@ -52,16 +54,14 @@ export class UsersService {
       // 2. Hash de contraseña
       const passwordHash = await bcrypt.hash(password, 10);
 
-      const cleanPhone = phone ? phone.replace('+52', '').trim() : phone;
-
-      // 3. Crear Persona + Usuario en la BD (con is_active en false por defecto)
+      // 3. Crear Persona + Usuario en la BD
       const newUser = await this.prisma.users.create({
         data: {
           email,
           phone: cleanPhone,
           password_hash: passwordHash,
           is_active: false, // Inactivo hasta activar por correo
-          two_factor_method: two_factor_enabled == false,
+          two_factor_method: two_factor_enabled === false ? false : true,
           persons: {
             create: {
               first_name,
@@ -78,11 +78,11 @@ export class UsersService {
         },
       });
 
-      // 4. Delegar la generación e inserción del OTP al OtpService
+      // 4. Generar OTP
       const otpCode = await this.otpService.generateOtp(newUser.id);
 
-      // 5. Enviar el correo de activación vía Nodemailer / Gmail
-      await this.mailerService.sendMail({
+      // 5. Enviar el correo de activación vía Resend SDK (HTTPS - Puerto 443)
+      await this.mailService.sendMail({
         to: newUser.email,
         subject: 'Activa tu cuenta - Vital ID',
         html: `
@@ -119,10 +119,11 @@ export class UsersService {
       };
     } catch (err) {
       console.error('Error en createUser:', err);
+      if (err instanceof ConflictException) throw err;
       throw new InternalServerErrorException({
         code: 'SYS-001',
         message: 'Internal Server Error',
-        error: 'Unhandled database exception',
+        error: 'Unhandled exception',
       });
     }
   }
