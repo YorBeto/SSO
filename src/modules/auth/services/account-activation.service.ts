@@ -5,7 +5,6 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { MailerService } from '@nestjs-modules/mailer';
 import { OtpService } from '../../otp/otp.service.js';
 import { TokenService } from './token.service.js';
 import { AuditService } from '../../audit/audit.service.js';
@@ -13,12 +12,13 @@ import { ActivateAccountDto } from '../dto/activate-account.dto.js';
 import { ResendCodeDto } from '../dto/resend-code.dto.js';
 import { OtpRequestDto } from '../dto/otp-request.dto.js';
 import { OtpVerifyDto } from '../dto/otp-verify.dto.js';
+import { MailService } from '../../mail/mail.service.js'; // Ajusta la ruta relativa según el archivo
 
 @Injectable()
 export class AccountActivationService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailerService: MailerService,
+    private readonly mailService: MailService,
     private readonly otpService: OtpService,
     private readonly tokenService: TokenService,
     private readonly auditService: AuditService, // <-- Inyectar AuditService
@@ -137,12 +137,12 @@ export class AccountActivationService {
       data: { blocked_until: null, failed_attempts: 0 },
     });
 
-    await this.mailerService.sendMail({
+    await this.mailService.sendMail({
       to: user.email,
       subject: 'Nuevo Código de Activación - Vital ID',
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2>Hola, ${user.persons?.first_name || 'Usuario'}</h2>
+          <h2>Hola, ${user.persons?.first_name || 'Usuario'} </h2>
           <p>Has solicitado un nuevo código para activar tu cuenta en Vital ID:</p>
           <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
             <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
@@ -190,7 +190,7 @@ export class AccountActivationService {
 
     const otpCode = await this.otpService.generateOtp(user.id);
 
-    await this.mailerService.sendMail({
+    await this.mailService.sendMail({
       to: user.email,
       subject: 'Código de Verificación (2FA) - Vital ID',
       html: `

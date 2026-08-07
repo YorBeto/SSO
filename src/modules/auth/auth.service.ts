@@ -10,16 +10,15 @@ import { LoginDto } from './dto/logint.dto.js';
 import * as bcrypt from 'bcrypt';
 import { TokenService } from './services/token.service.js';
 import { OtpService } from '../otp/otp.service.js';
-import { MailerService } from '@nestjs-modules/mailer';
 import { AuditService } from '../audit/audit.service.js';
-
-@Injectable()
+import { MailService } from '../../modules/mail/mail.service.js'; // Ajusta la ruta relativa según el archivo@Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly otpService: OtpService,
-    private readonly mailerService: MailerService,
+
+    private readonly mailService: MailService,
     private readonly auditService: AuditService, // <-- Inyectar AuditService
   ) {}
 
@@ -105,7 +104,7 @@ export class AuthService {
     if (user.two_factor_method) {
       const otpCode = await this.otpService.generateOtp(user.id);
 
-      await this.mailerService.sendMail({
+      await this.mailService.sendMail({
         to: user.email,
         subject: 'Código de Verificación (2FA) - Vital ID',
         html: `

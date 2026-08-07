@@ -8,12 +8,14 @@ import { TokenService } from './services/token.service.js';
 import { AccountActivationService } from './services/account-activation.service.js';
 import { PasswordService } from './services/password.service.js';
 import { AuditModule } from '../audit/audit.module.js';
+import { MailModule } from '../mail/mail.module.js';
 
 @Module({
   imports: [
     UsersModule,
     OtpModule,
     AuditModule,
+    MailModule,
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,

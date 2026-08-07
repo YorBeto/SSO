@@ -4,19 +4,19 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service.js';
-import { MailerService } from '@nestjs-modules/mailer';
 import { OtpService } from '../../otp/otp.service.js';
 import { AuditService } from '../../audit/audit.service.js';
 import * as bcrypt from 'bcrypt';
 import { ChangePasswordDto } from '../dto/change-password.dto.js';
 import { ForgotPasswordDto } from '../dto/forgot-password.dto.js';
 import { ResetPasswordDto } from '../dto/reset-password.dto.js';
+import { MailService } from '../../mail/mail.service.js'; // Ajusta la ruta relativa según el archivo
 
 @Injectable()
 export class PasswordService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly mailerService: MailerService,
+    private readonly mailService: MailService,
     private readonly otpService: OtpService,
     private readonly auditService: AuditService, // <-- Inyectar AuditService
   ) {}
@@ -88,12 +88,12 @@ export class PasswordService {
     const otpCode = await this.otpService.generateOtp(user.id);
 
     try {
-      await this.mailerService.sendMail({
+      await this.mailService.sendMail({
         to: user.email,
         subject: 'Restablecimiento de Contraseña - Vital ID',
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>Hola, ${user.persons?.first_name || 'Usuario'}</h2>
+            <h2>Hola, ${user.persons?.first_name || 'Usuario'} </h2>
             <p>Has solicitado restablecer tu contraseña en Vital ID. Tu token de verificación es:</p>
             <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
