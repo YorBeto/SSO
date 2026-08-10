@@ -243,6 +243,7 @@ export class AccountActivationService {
           user.id,
           user.email,
           user.person_id,
+          'Navegador Web (2FA)',
         );
 
       await this.auditService.logEvent('OTP_VERIFIED', {

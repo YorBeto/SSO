@@ -7,6 +7,7 @@ import { OtpModule } from '../otp/otp.module.js';
 import { TokenService } from './services/token.service.js';
 import { AccountActivationService } from './services/account-activation.service.js';
 import { PasswordService } from './services/password.service.js';
+import { SessionsService } from './services/sessions.service.js';
 import { AuditModule } from '../audit/audit.module.js';
 
 @Module({
@@ -25,8 +26,9 @@ import { AuditModule } from '../audit/audit.module.js';
     TokenService,
     AccountActivationService,
     PasswordService,
+    SessionsService,
   ],
   controllers: [AuthController],
-  exports: [AuthService, TokenService, PasswordService],
+  exports: [AuthService, TokenService, PasswordService, SessionsService],
 })
 export class AuthModule {}
