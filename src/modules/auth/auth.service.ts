@@ -4,9 +4,12 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { LoginDto } from './dto/logint.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
+import { Toggle2FADto } from './dto/toggle-2fa.dto.js';
 import * as bcrypt from 'bcrypt';
 import { TokenService } from './services/token.service.js';
 import { OtpService } from '../otp/otp.service.js';
@@ -22,7 +25,7 @@ export class AuthService {
     private readonly auditService: AuditService, // <-- Inyectar AuditService
   ) {}
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, deviceName?: string) {
     const { email, password } = dto;
 
     const user = await this.prisma.users.findUnique({
@@ -147,6 +150,7 @@ export class AuthService {
         user.id,
         user.email,
         user.persons,
+        deviceName,
       );
 
     const userPerson = user as typeof user & { persons: any };
@@ -204,8 +208,8 @@ export class AuthService {
     };
   }
 
-  async logout(userId: string, refreshToken?: string) {
-    await this.tokenService.revokeTokens(userId, refreshToken);
+  async logout(userId: string, jti?: string, refreshToken?: string) {
+    await this.tokenService.revokeTokens(userId, jti, refreshToken);
 
     await this.auditService.logEvent('LOGOUT', {
       userId,
@@ -215,6 +219,133 @@ export class AuthService {
     return {
       success: true,
       message: 'Sesión cerrada exitosamente.',
+    };
+  }
+
+  // =====================================================
+  // ACTUALIZACIÓN DE PERFIL
+  // =====================================================
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      include: { persons: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'AUTH-012',
+        message: 'Usuario no encontrado',
+        error: 'Not Found',
+      });
+    }
+
+    // Verificar teléfono duplicado si se va a cambiar
+    if (dto.phone && dto.phone !== user.phone) {
+      const existingPhone = await this.prisma.users.findFirst({
+        where: { phone: dto.phone, id: { not: userId } },
+      });
+      if (existingPhone) {
+        throw new BadRequestException({
+          code: 'AUTH-009',
+          message: 'El número de teléfono ya está registrado por otro usuario',
+          error: 'Bad Request',
+        });
+      }
+    }
+
+    // Actualizar datos de persons si hay campos de persona
+    const personFields: any = {};
+    if (dto.first_name !== undefined) personFields.first_name = dto.first_name;
+    if (dto.paternal_last_name !== undefined) personFields.paternal_last_name = dto.paternal_last_name;
+    if (dto.maternal_last_name !== undefined) personFields.maternal_last_name = dto.maternal_last_name;
+    if (dto.birth_date !== undefined) personFields.birth_date = new Date(dto.birth_date);
+    if (dto.gender !== undefined) personFields.gender = dto.gender;
+    if (dto.address !== undefined) personFields.address = dto.address;
+
+    if (Object.keys(personFields).length > 0) {
+      personFields.updated_at = new Date();
+      await this.prisma.persons.update({
+        where: { id: user.persons.id },
+        data: personFields,
+      });
+    }
+
+    // Actualizar datos de users si hay campos de usuario
+    const userFields: any = {};
+    if (dto.phone !== undefined) userFields.phone = dto.phone;
+
+    if (Object.keys(userFields).length > 0) {
+      userFields.updated_at = new Date();
+      await this.prisma.users.update({
+        where: { id: userId },
+        data: userFields,
+      });
+    }
+
+    // Retornar perfil actualizado
+    const updatedUser = await this.prisma.users.findUnique({
+      where: { id: userId },
+      include: { persons: true },
+    });
+
+    await this.auditService.logEvent('LOGIN_SUCCESS', {
+      userId,
+      details: 'Perfil actualizado correctamente',
+    });
+
+    return {
+      success: true,
+      message: 'Perfil actualizado exitosamente',
+      data: {
+        id: updatedUser!.persons.id,
+        first_name: updatedUser!.persons.first_name,
+        paternal_last_name: updatedUser!.persons.paternal_last_name,
+        maternal_last_name: updatedUser!.persons.maternal_last_name,
+        birth_date: updatedUser!.persons.birth_date,
+        gender: updatedUser!.persons.gender,
+        address: updatedUser!.persons.address,
+        email: updatedUser!.email,
+        phone: updatedUser!.phone,
+        two_factor_enabled: updatedUser!.two_factor_method,
+        updated_at: updatedUser!.updated_at,
+      },
+    };
+  }
+
+  // =====================================================
+  // TOGGLE 2FA
+  // =====================================================
+
+  async toggle2FA(userId: string, dto: Toggle2FADto) {
+    const user = await this.prisma.users.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'AUTH-012',
+        message: 'Usuario no encontrado',
+        error: 'Not Found',
+      });
+    }
+
+    await this.prisma.users.update({
+      where: { id: userId },
+      data: {
+        two_factor_method: dto.enabled,
+        updated_at: new Date(),
+      },
+    });
+
+    const action = dto.enabled ? 'activado' : 'desactivado';
+    await this.auditService.logEvent('LOGIN_SUCCESS', {
+      userId,
+      details: `Autenticación de dos factores ${action}`,
+    });
+
+    return {
+      success: true,
+      message: `La autenticación de dos factores ha sido ${action} exitosamente`,
+      two_factor_enabled: dto.enabled,
     };
   }
 }
