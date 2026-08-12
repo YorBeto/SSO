@@ -29,7 +29,11 @@ export class AuditQueryDto {
   @Min(1)
   page?: number = 1;
 
-  @ApiPropertyOptional({ default: 20, maximum: 100, description: 'Registros por página' })
+  @ApiPropertyOptional({
+    default: 20,
+    maximum: 100,
+    description: 'Registros por página',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

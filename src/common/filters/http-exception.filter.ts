@@ -14,6 +14,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
+    const isOAuthPath =
+      request.url.includes('/oauth/token') ||
+      request.url.includes('/oauth/userinfo') ||
+      request.url.includes('/oauth/revoke');
+
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let code = 'SYS-001';
     let message: string | string[] = 'Internal Server Error';
@@ -26,6 +31,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
       errorCategory = res.error || exception.name;
       message = res.message || exception.message;
       code = res.code || this.getCategoryCode(status);
+
+      // OAuth: si el servicio lanzó con oauth_error, respetarlo (RFC 6749)
+      if (res.oauth_error) {
+        errorCategory = res.oauth_error;
+      }
+    }
+
+    // ── Rutas OAuth: responder en formato RFC 6749 (JSON plano) ──
+    if (isOAuthPath) {
+      return response.status(status).json({
+        error: errorCategory,
+        error_description: Array.isArray(message)
+          ? message.join(', ')
+          : message,
+      });
     }
 
     response.status(status).json({

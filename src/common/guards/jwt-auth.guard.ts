@@ -30,12 +30,13 @@ export class JwtAuthGuard implements CanActivate {
     let payload: any;
     try {
       payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET || 'SecretKey',
+        secret: process.env.JWT_SECRET,
       });
     } catch {
       throw new UnauthorizedException({
         code: 'AUTH-006',
-        message: 'El token de acceso es inválido o ha expirado. Inicia sesión nuevamente',
+        message:
+          'El token de acceso es inválido o ha expirado. Inicia sesión nuevamente',
         error: 'Unauthorized',
       });
     }
@@ -53,7 +54,8 @@ export class JwtAuthGuard implements CanActivate {
       if (!session) {
         throw new UnauthorizedException({
           code: 'AUTH-007',
-          message: 'La sesión ha sido cerrada. Por favor inicia sesión nuevamente',
+          message:
+            'La sesión ha sido cerrada. Por favor inicia sesión nuevamente',
           error: 'Unauthorized',
         });
       }

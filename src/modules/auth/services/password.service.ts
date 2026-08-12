@@ -42,7 +42,10 @@ export class PasswordService {
       });
     }
 
-    const isSamePassword = await bcrypt.compare(new_password, user.password_hash);
+    const isSamePassword = await bcrypt.compare(
+      new_password,
+      user.password_hash,
+    );
     if (isSamePassword) {
       throw new BadRequestException({
         code: 'AUTH-019',
@@ -80,7 +83,8 @@ export class PasswordService {
     if (!user) {
       throw new NotFoundException({
         code: 'AUTH-012',
-        message: 'No se encontró un usuario con el correo electrónico proporcionado',
+        message:
+          'No se encontró un usuario con el correo electrónico proporcionado',
         error: 'Not Found',
       });
     }
@@ -111,7 +115,8 @@ export class PasswordService {
     } catch (mailError) {
       throw new BadRequestException({
         code: 'AUTH-022',
-        message: 'No se pudo enviar el correo electrónico. Verifica tu conexión e intenta nuevamente',
+        message:
+          'No se pudo enviar el correo electrónico. Verifica tu conexión e intenta nuevamente',
         error: 'Bad Request',
       });
     }
@@ -129,7 +134,8 @@ export class PasswordService {
     if (!user) {
       throw new NotFoundException({
         code: 'AUTH-012',
-        message: 'No se encontró un usuario con el correo electrónico proporcionado',
+        message:
+          'No se encontró un usuario con el correo electrónico proporcionado',
         error: 'Not Found',
       });
     }
@@ -141,14 +147,16 @@ export class PasswordService {
       await this.auditService.logEvent('OTP_FAILED', {
         userId: user.id,
         email: user.email,
-        details: 'Intento fallido de restablecimiento de contraseña por token inválido/expirado',
+        details:
+          'Intento fallido de restablecimiento de contraseña por token inválido/expirado',
       });
 
       const errorCode = error?.response?.code;
       if (errorCode === 'AUTH-016') {
         throw new BadRequestException({
           code: 'AUTH-021',
-          message: 'El token de restablecimiento ha expirado. Solicita uno nuevo',
+          message:
+            'El token de restablecimiento ha expirado. Solicita uno nuevo',
           error: 'Bad Request',
         });
       }

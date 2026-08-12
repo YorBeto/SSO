@@ -8,7 +8,7 @@ import { CreateUserDto } from './dto/create-user.dto.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { MailService } from '../mail/mail.service.js'; // <-- Importar tu MailService
-import { OtpService } from '../otp/otp.service.js'; 
+import { OtpService } from '../otp/otp.service.js';
 
 @Injectable()
 export class UsersService {
@@ -16,7 +16,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly mailService: MailService, // <-- Inyectar MailService
-    private readonly otpService: OtpService, 
+    private readonly otpService: OtpService,
   ) {}
 
   async createUser(dto: CreateUserDto) {
@@ -45,7 +45,8 @@ export class UsersService {
     if (existingUser) {
       throw new ConflictException({
         code: 'AUTH-009',
-        message: 'El correo electrónico o teléfono ya está registrado en el sistema',
+        message:
+          'El correo electrónico o teléfono ya está registrado en el sistema',
         error: 'Conflict',
       });
     }
@@ -100,7 +101,8 @@ export class UsersService {
 
       // 6. Retornar respuesta
       return {
-        message: 'Usuario registrado exitosamente. Se ha enviado un código de activación a su correo.',
+        message:
+          'Usuario registrado exitosamente. Se ha enviado un código de activación a su correo.',
         data: {
           id: newUser.persons.id,
           first_name: newUser.persons.first_name,

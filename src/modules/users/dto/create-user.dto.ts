@@ -49,10 +49,13 @@ export class CreateUserDto {
 
   @ApiProperty({
     example: 'Password123!',
-    description: 'Mínimo 12 caracteres con mayúscula, minúscula, número y especial',
+    description:
+      'Mínimo 12 caracteres con mayúscula, minúscula, número y especial',
   })
   @IsString()
-  @MinLength(12, { message: 'AUTH-008: La contraseña debe tener al menos 12 caracteres' })
+  @MinLength(12, {
+    message: 'AUTH-008: La contraseña debe tener al menos 12 caracteres',
+  })
   @MaxLength(255)
   @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/, {
     message:
@@ -81,11 +84,15 @@ export class CreateUserDto {
   @Matches(/^[A-Za-z0-9\u00E1-\u00FC\s'\-\.,#]*$/)
   address?: string;
 
-  @ApiPropertyOptional({ example: '+525541234567', description: 'Formato internacional' })
+  @ApiPropertyOptional({
+    example: '+525541234567',
+    description: 'Formato internacional',
+  })
   @IsOptional()
   @IsString()
   @Matches(/^\+[1-9]\d{6,14}$/, {
-    message: 'El teléfono debe cumplir el formato E.164 (Ejemplo: +528711234567)',
+    message:
+      'El teléfono debe cumplir el formato E.164 (Ejemplo: +528711234567)',
   })
   phone!: string;
 

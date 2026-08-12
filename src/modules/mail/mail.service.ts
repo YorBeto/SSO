@@ -6,7 +6,9 @@ export class MailService {
   private resend: Resend;
 
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY || process.env.MAIL_PASS);
+    this.resend = new Resend(
+      process.env.RESEND_API_KEY || process.env.MAIL_PASS,
+    );
   }
 
   async sendMail(options: { to: string; subject: string; html: string }) {
@@ -20,7 +22,9 @@ export class MailService {
 
       if (error) {
         console.error('Error de Resend API:', error);
-        throw new InternalServerErrorException(`Resend Error: ${error.message}`);
+        throw new InternalServerErrorException(
+          `Resend Error: ${error.message}`,
+        );
       }
 
       return data;
