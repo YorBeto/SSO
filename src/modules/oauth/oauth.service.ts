@@ -509,6 +509,15 @@ export class OAuthService {
     return null;
   }
 
+  /**
+   * Elimina comillas dobles/spacios residuales de un valor de entorno.
+   * Evita que URLs como `"https://…"` (con comillas literales) rompan el
+   * redirect del flujo de Account Linking.
+   */
+  private cleanBaseUrl(url: string): string {
+    return url.trim().replace(/^"|"$/g, '');
+  }
+
   private buildLoginRedirect(
     redirect_uri: string,
     client_id: string,
@@ -517,9 +526,10 @@ export class OAuthService {
     codeChallenge?: string,
     codeChallengeMethod?: string,
   ): string {
-    const base =
+    const base = this.cleanBaseUrl(
       process.env.OAUTH_LOGIN_URL ||
-      `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/auth/login`;
+        `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/auth/login`,
+    );
     const params = new URLSearchParams({
       redirect_uri,
       client_id,
@@ -539,10 +549,11 @@ export class OAuthService {
    * de su localStorage o pedirá login (caso B).
    */
   private buildConsentRedirect(query: any, vitalId: string): string {
-    const base =
+    const base = this.cleanBaseUrl(
       process.env.OAUTH_CONSENT_URL ||
-      process.env.OAUTH_LOGIN_URL ||
-      `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/#authorize`;
+        process.env.OAUTH_LOGIN_URL ||
+        `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/#authorize`,
+    );
     const sep = base.includes('?') ? '&' : '?';
     const params = new URLSearchParams();
     for (const key of [
