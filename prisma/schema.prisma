@@ -55,6 +55,76 @@ model persons {
   users              users[]
 }
 
+// ═══════════════════════════════════════════════════════════
+// OAuth 2.0 — Account Linking (Vital ID como Authorization Server)
+// ═══════════════════════════════════════════════════════════
+
+enum oauth_client_auth_method {
+  client_secret_basic
+  client_secret_post
+}
+
+model oauth_clients {
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id        String                  @unique @db.VarChar(100)
+  client_secret_hash String                 @db.VarChar(255)
+  client_name      String                  @db.VarChar(100)
+  grant_types      Json                    @db.Json
+  redirect_uris    Json                    @db.Json
+  allowed_scopes   Json                    @db.Json
+  auth_method      oauth_client_auth_method @default(client_secret_basic)
+  is_active        Boolean?                @default(true)
+  created_at       DateTime?               @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?               @default(now()) @db.Timestamptz(6)
+  deleted_at       DateTime?               @db.Timestamptz(6)
+  auth_codes       oauth_authorization_codes[]
+  tokens           oauth_tokens[]
+
+  @@index([id], map: "idx_oauth_clients_id")
+  @@index([client_id], map: "idx_oauth_clients_client_id")
+}
+
+model oauth_authorization_codes {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code               String            @unique @db.VarChar(255)
+  client_id          String            @db.Uuid
+  user_id            String            @db.Uuid
+  redirect_uri       String            @db.VarChar(500)
+  scope              String?           @db.VarChar(255)
+  code_challenge     String?           @db.VarChar(255)
+  code_challenge_method String?        @db.VarChar(20)
+  expires_at         DateTime          @db.Timestamptz(6)
+  used_at            DateTime?         @db.Timestamptz(6)
+  created_at         DateTime?         @default(now()) @db.Timestamptz(6)
+  oauth_clients      oauth_clients     @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([code], map: "idx_oauth_codes_code")
+  @@index([client_id], map: "idx_oauth_codes_client")
+  @@index([user_id], map: "idx_oauth_codes_user")
+}
+
+model oauth_tokens {
+  id                  String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id           String            @db.Uuid
+  user_id             String            @db.Uuid
+  access_token_jti    String            @db.VarChar(255)
+  refresh_token_hash  String            @db.VarChar(255)
+  scope               String?           @db.VarChar(255)
+  access_expires_at   DateTime          @db.Timestamptz(6)
+  refresh_expires_at  DateTime          @db.Timestamptz(6)
+  revoked_at          DateTime?         @db.Timestamptz(6)
+  created_at          DateTime?         @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?         @default(now()) @db.Timestamptz(6)
+  oauth_clients       oauth_clients     @relation(fields: [client_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([client_id], map: "idx_oauth_tokens_client")
+  @@index([user_id], map: "idx_oauth_tokens_user")
+  @@index([access_token_jti], map: "idx_oauth_tokens_jti")
+  @@index([user_id, client_id], map: "idx_oauth_tokens_user_client")
+}
+
 model refresh_tokens {
   id              String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id         String            @db.Uuid
@@ -86,6 +156,8 @@ model users {
   otp_codes         otp_codes[]
   refresh_tokens    refresh_tokens[]
   persons           persons           @relation(fields: [person_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  oauth_codes       oauth_authorization_codes[]
+  oauth_tokens      oauth_tokens[]
 }
 
 enum audit_event_type {
