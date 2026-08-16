@@ -86,7 +86,8 @@ export class AccountActivationService {
 
         throw new BadRequestException({
           code: 'AUTH-018',
-          message: 'Código incorrecto. Has alcanzado el límite de 3 intentos. Tu cuenta ha sido bloqueada por 15 minutos.',
+          message:
+            'Código incorrecto. Has alcanzado el límite de 3 intentos. Tu cuenta ha sido bloqueada por 15 minutos.',
           error: 'Bad Request',
           remaining_attempts: 0,
         });
@@ -160,7 +161,8 @@ export class AccountActivationService {
 
     return {
       success: true,
-      message: 'Se ha enviado un nuevo código de activación a tu correo electrónico.',
+      message:
+        'Se ha enviado un nuevo código de activación a tu correo electrónico.',
     };
   }
 
@@ -175,7 +177,8 @@ export class AccountActivationService {
     if (!user) {
       throw new BadRequestException({
         code: 'AUTH-012',
-        message: 'No se encontró un usuario con el correo electrónico proporcionado',
+        message:
+          'No se encontró un usuario con el correo electrónico proporcionado',
         error: 'Bad Request',
       });
     }
@@ -183,7 +186,8 @@ export class AccountActivationService {
     if (!user.two_factor_method) {
       throw new BadRequestException({
         code: 'AUTH-013',
-        message: 'El usuario no tiene habilitada la autenticación de dos factores',
+        message:
+          'El usuario no tiene habilitada la autenticación de dos factores',
         error: 'Bad Request',
       });
     }
@@ -229,7 +233,8 @@ export class AccountActivationService {
     if (!user) {
       throw new BadRequestException({
         code: 'AUTH-012',
-        message: 'No se encontró un usuario con el correo electrónico proporcionado',
+        message:
+          'No se encontró un usuario con el correo electrónico proporcionado',
         error: 'Bad Request',
       });
     }

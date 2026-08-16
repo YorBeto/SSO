@@ -67,7 +67,8 @@ export class OtpService {
     if (currentAttempts >= this.MAX_ATTEMPTS) {
       throw new BadRequestException({
         code: 'AUTH-018',
-        message: 'Has superado el número máximo de intentos permitidos (3/3). Solicita un nuevo código.',
+        message:
+          'Has superado el número máximo de intentos permitidos (3/3). Solicita un nuevo código.',
         error: 'Bad Request',
       });
     }

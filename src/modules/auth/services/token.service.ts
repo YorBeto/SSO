@@ -11,7 +11,51 @@ export class TokenService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async createAndStoreTokens(userId: string, email: string, person: any, deviceName?: string) {
+  private get accessSecret(): string {
+    return process.env.JWT_SECRET || '';
+  }
+
+  private get refreshSecret(): string {
+    return process.env.JWT_REFRESH_SECRET || '';
+  }
+
+  private get accessExpiresIn(): string {
+    return process.env.JWT_EXPIRES_IN || '15m';
+  }
+
+  private get refreshExpiresIn(): string {
+    return process.env.JWT_REFRESH_EXPIRES_IN || '7d';
+  }
+
+  private refreshTtlMs(): number {
+    const ms = this.parseDurationToMs(this.refreshExpiresIn);
+    return Number.isFinite(ms) ? ms : 7 * 24 * 60 * 60 * 1000;
+  }
+
+  private parseDurationToMs(value: string): number {
+    const match = /^(\d+)([smhd])$/.exec(String(value).trim());
+    if (!match) return NaN;
+    const n = parseInt(match[1], 10);
+    switch (match[2]) {
+      case 's':
+        return n * 1000;
+      case 'm':
+        return n * 60 * 1000;
+      case 'h':
+        return n * 60 * 60 * 1000;
+      case 'd':
+        return n * 24 * 60 * 60 * 1000;
+      default:
+        return NaN;
+    }
+  }
+
+  async createAndStoreTokens(
+    userId: string,
+    email: string,
+    person: any,
+    deviceName?: string,
+  ) {
     const jti = randomUUID();
     const payload = {
       sub: userId,
@@ -24,18 +68,17 @@ export class TokenService {
     };
 
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET || 'SecretKey',
-      expiresIn: '15m',
+      secret: this.accessSecret,
+      expiresIn: this.accessExpiresIn as any,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'RefreshSecretKey',
-      expiresIn: '7d',
+      secret: this.refreshSecret,
+      expiresIn: this.refreshExpiresIn as any,
     });
 
     const tokenHash = await bcrypt.hash(refreshToken, 10);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = new Date(Date.now() + this.refreshTtlMs());
 
     // 1. Guardar refresh_token
     const createdRefreshToken = await this.prisma.refresh_tokens.create({
@@ -65,7 +108,7 @@ export class TokenService {
     let payload: any;
     try {
       payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET || 'RefreshSecretKey',
+        secret: this.refreshSecret,
       });
     } catch {
       throw new UnauthorizedException({
@@ -83,7 +126,7 @@ export class TokenService {
       },
     });
 
-    let matchedTokenRecord: typeof activeTokens[number] | null = null;
+    let matchedTokenRecord: (typeof activeTokens)[number] | null = null;
 
     for (const record of activeTokens) {
       const isValid = await bcrypt.compare(refreshToken, record.token_hash);
@@ -116,7 +159,8 @@ export class TokenService {
       });
       throw new UnauthorizedException({
         code: 'AUTH-007',
-        message: 'La sesión ha sido revocada. Por favor inicia sesión nuevamente.',
+        message:
+          'La sesión ha sido revocada. Por favor inicia sesión nuevamente.',
         error: 'Unauthorized',
       });
     }
@@ -153,18 +197,17 @@ export class TokenService {
     };
 
     const accessToken = this.jwtService.sign(newPayload, {
-      secret: process.env.JWT_SECRET || 'SecretKey',
-      expiresIn: '15m',
+      secret: this.accessSecret,
+      expiresIn: this.accessExpiresIn as any,
     });
 
     const newRefreshToken = this.jwtService.sign(newPayload, {
-      secret: process.env.JWT_REFRESH_SECRET || 'RefreshSecretKey',
-      expiresIn: '7d',
+      secret: this.refreshSecret,
+      expiresIn: this.refreshExpiresIn as any,
     });
 
     const tokenHash = await bcrypt.hash(newRefreshToken, 10);
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = new Date(Date.now() + this.refreshTtlMs());
 
     const createdRefreshToken = await this.prisma.refresh_tokens.create({
       data: {

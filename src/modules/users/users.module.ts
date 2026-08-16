@@ -5,10 +5,7 @@ import { OtpModule } from '../otp/otp.module.js';
 import { MailModule } from '../mail/mail.module.js';
 
 @Module({
-  imports: [
-    OtpModule,
-    MailModule, 
-  ],
+  imports: [OtpModule, MailModule],
   providers: [UsersService],
   controllers: [UsersController],
   exports: [UsersService],

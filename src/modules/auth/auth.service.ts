@@ -14,7 +14,9 @@ import * as bcrypt from 'bcrypt';
 import { TokenService } from './services/token.service.js';
 import { OtpService } from '../otp/otp.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { MailService } from '../../modules/mail/mail.service.js'; // Ajusta la ruta relativa según el archivo@Injectable()
+import { MailService } from '../../modules/mail/mail.service.js'; // Ajusta la ruta relativa según el archivo
+
+@Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
@@ -24,6 +26,24 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly auditService: AuditService, // <-- Inyectar AuditService
   ) {}
+
+  private secondsFromDuration(value: string): number {
+    const match = /^(\d+)([smhd])$/.exec(String(value).trim());
+    if (!match) return 900;
+    const n = parseInt(match[1], 10);
+    switch (match[2]) {
+      case 's':
+        return n;
+      case 'm':
+        return n * 60;
+      case 'h':
+        return n * 60 * 60;
+      case 'd':
+        return n * 24 * 60 * 60;
+      default:
+        return 900;
+    }
+  }
 
   async login(dto: LoginDto, deviceName?: string) {
     const { email, password } = dto;
@@ -55,7 +75,8 @@ export class AuthService {
 
       throw new UnauthorizedException({
         code: 'AUTH-003',
-        message: 'Esta cuenta se encuentra desactivada. Contacta al soporte técnico',
+        message:
+          'Esta cuenta se encuentra desactivada. Contacta al soporte técnico',
         error: 'Unauthorized',
       });
     }
@@ -70,7 +91,8 @@ export class AuthService {
       throw new HttpException(
         {
           code: 'AUTH-010',
-          message: 'Tu cuenta ha sido bloqueada temporalmente por demasiados intentos fallidos. Intenta nuevamente más tarde',
+          message:
+            'Tu cuenta ha sido bloqueada temporalmente por demasiados intentos fallidos. Intenta nuevamente más tarde',
           error: 'Locked',
         },
         HttpStatus.LOCKED,
@@ -132,7 +154,8 @@ export class AuthService {
         {
           requires_2fa: true,
           session_id: user.id,
-          message: 'Se requiere autenticación de dos factores. Código OTP enviado a tu correo.',
+          message:
+            'Se requiere autenticación de dos factores. Código OTP enviado a tu correo.',
         },
         HttpStatus.ACCEPTED,
       );
@@ -153,14 +176,14 @@ export class AuthService {
         deviceName,
       );
 
-    const userPerson = user as typeof user & { persons: any };
+    const userPerson = user;
 
     return {
       requires_2fa: false,
       access_token: accessToken,
       refresh_token: refreshToken,
       token_type: 'Bearer',
-      expires_in: 900,
+      expires_in: this.secondsFromDuration(process.env.JWT_EXPIRES_IN || '15m'),
       user: {
         id: userPerson.persons.id,
         first_name: userPerson.persons.first_name,
@@ -257,9 +280,12 @@ export class AuthService {
     // Actualizar datos de persons si hay campos de persona
     const personFields: any = {};
     if (dto.first_name !== undefined) personFields.first_name = dto.first_name;
-    if (dto.paternal_last_name !== undefined) personFields.paternal_last_name = dto.paternal_last_name;
-    if (dto.maternal_last_name !== undefined) personFields.maternal_last_name = dto.maternal_last_name;
-    if (dto.birth_date !== undefined) personFields.birth_date = new Date(dto.birth_date);
+    if (dto.paternal_last_name !== undefined)
+      personFields.paternal_last_name = dto.paternal_last_name;
+    if (dto.maternal_last_name !== undefined)
+      personFields.maternal_last_name = dto.maternal_last_name;
+    if (dto.birth_date !== undefined)
+      personFields.birth_date = new Date(dto.birth_date);
     if (dto.gender !== undefined) personFields.gender = dto.gender;
     if (dto.address !== undefined) personFields.address = dto.address;
 
