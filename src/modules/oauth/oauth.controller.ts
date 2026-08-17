@@ -105,6 +105,21 @@ export class OAuthController {
     return this.oauthService.revokeToken(body, authorization);
   }
 
+  @Get('link-status')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Estado del vínculo de la skill (Alexa) del usuario',
+    description:
+      'Devuelve si el usuario autenticado (SSO) tiene un vínculo OAuth activo ' +
+      'con la skill de Alexa. Lo usa el móvil para mostrar el estado real ' +
+      '(linked, client_name, linked_at, vital_id).',
+  })
+  async getUserLinkStatus(@Req() req: any) {
+    return this.oauthService.getUserLinkStatus(req.user?.sub);
+  }
+
   @Delete('links')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
