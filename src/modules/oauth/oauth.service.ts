@@ -440,7 +440,40 @@ export class OAuthService {
     return {};
   }
 
-  // ── 5. DELETE /oauth/links (desvinculación por usuario SSO) ─────────
+  // ── 5. GET /oauth/link-status (estado del vínculo por usuario SSO) ──
+  /**
+   * Devuelve el estado real del vínculo de la skill (Alexa) para el usuario
+   * autenticado (JwtAuthGuard). El móvil lo usa para saber si la cuenta ya
+   * está vinculada, en lugar de depender solo de una bandera local.
+   */
+  async getUserLinkStatus(userId?: string) {
+    if (!userId) this.oauthError('Usuario no identificado', 'invalid_token');
+
+    const link = await this.prisma.oauth_tokens.findFirst({
+      where: {
+        user_id: userId,
+        revoked_at: null,
+        refresh_expires_at: { gt: new Date() },
+      },
+      include: { oauth_clients: true },
+      orderBy: { created_at: 'desc' },
+    });
+
+    if (!link) {
+      return { linked: false, vital_id: userId };
+    }
+
+    return {
+      linked: true,
+      vital_id: userId,
+      client_id: link.oauth_clients?.client_id ?? null,
+      client_name: link.oauth_clients?.client_name ?? null,
+      scope: link.scope ?? null,
+      linked_at: link.created_at ?? null,
+    };
+  }
+
+  // ── 6. DELETE /oauth/links (desvinculación por usuario SSO) ─────────
   /**
    * Revoca todos los tokens OAuth activos (vínculo de la skill) de un usuario.
    * Lo usa el frontend para "Desconectar Alexa". El usuario se autentica con
