@@ -62,7 +62,7 @@ export class UsersService {
           phone: cleanPhone,
           password_hash: passwordHash,
           is_active: false, // Inactivo hasta activar por correo
-          two_factor_method: two_factor_enabled === false ? false : true,
+          two_factor_method: two_factor_enabled === true ? true : false,
           persons: {
             create: {
               first_name,
