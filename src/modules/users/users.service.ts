@@ -30,7 +30,6 @@ export class UsersService {
       birth_date,
       gender,
       address,
-      two_factor_enabled,
     } = dto;
 
     // 1. Validar correo o teléfono duplicado
@@ -62,7 +61,7 @@ export class UsersService {
           phone: cleanPhone,
           password_hash: passwordHash,
           is_active: false, // Inactivo hasta activar por correo
-          two_factor_method: two_factor_enabled === true ? true : false,
+          two_factor_method: false,
           persons: {
             create: {
               first_name,
