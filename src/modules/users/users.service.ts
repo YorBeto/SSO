@@ -2,22 +2,23 @@ import {
   Injectable,
   ConflictException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { MailService } from '../mail/mail.service.js'; // <-- Importar tu MailService
-import { OtpService } from '../otp/otp.service.js'; 
+import { MailService } from '../mail/mail.service.js';
+import { OtpService } from '../otp/otp.service.js';
 
 @Injectable()
 export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService, // <-- Inyectar MailService
-    private readonly otpService: OtpService, 
-  ) {}
+    private readonly mailService: MailService,
+    private readonly otpService: OtpService,
+  ) { }
 
   async createUser(dto: CreateUserDto) {
     const {
@@ -102,7 +103,7 @@ export class UsersService {
       return {
         message: 'Usuario registrado exitosamente. Se ha enviado un código de activación a su correo.',
         data: {
-          id: newUser.persons.id,
+          id: newUser.id,
           first_name: newUser.persons.first_name,
           paternal_last_name: newUser.persons.paternal_last_name,
           maternal_last_name: newUser.persons.maternal_last_name,
@@ -126,5 +127,27 @@ export class UsersService {
         error: 'Unhandled exception',
       });
     }
+  }
+
+  async getUserForVitalGuard(userId: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id: userId },
+      include: {
+        persons: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    return {
+      email: user.email,
+      person: {
+        first_name: user.persons.first_name,
+        paternal_last_name: user.persons.paternal_last_name,
+        maternal_last_name: user.persons.maternal_last_name,
+      },
+    };
   }
 }
