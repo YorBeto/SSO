@@ -14,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 import { TokenService } from './services/token.service.js';
 import { OtpService } from '../otp/otp.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import { MailService } from '../../modules/mail/mail.service.js'; // Ajusta la ruta relativa según el archivo
+import { MailService } from '../../modules/mail/mail.service.js';
 
 @Injectable()
 export class AuthService {
@@ -22,9 +22,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly tokenService: TokenService,
     private readonly otpService: OtpService,
-
     private readonly mailService: MailService,
-    private readonly auditService: AuditService, // <-- Inyectar AuditService
+    private readonly auditService: AuditService,
   ) {}
 
   private secondsFromDuration(value: string): number {
@@ -126,40 +125,45 @@ export class AuthService {
     });
 
     // 2FA Requerido
-    if (user.two_factor_method) {
-      const otpCode = await this.otpService.generateOtp(user.id);
+    // if (user.two_factor_method) {
+    //   const otpCode = await this.otpService.generateOtp(user.id);
 
-      await this.mailService.sendMail({
-        to: user.email,
-        subject: 'Código de Verificación (2FA) - Vital ID',
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>Hola, ${user.persons?.first_name || 'Usuario'}</h2>
-            <p>Se ha detectado un inicio de sesión. Tu código de verificación 2FA es:</p>
-            <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
-            </div>
-            <p>Este código expira en 3 minutos.</p>
-          </div>
-        `,
-      });
+    //   try {
+    //     await this.mailService.sendMail({
+    //       to: user.email,
+    //       subject: 'Código de Verificación (2FA) - Vital ID',
+    //       html: `
+    //         <div style="font-family: Arial, sans-serif; padding: 20px;">
+    //           <h2>Hola, ${user.persons?.first_name || 'Usuario'}</h2>
+    //           <p>Se ha detectado un inicio de sesión. Tu código de verificación 2FA es:</p>
+    //           <div style="background-color: #f4f4f4; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0;">
+    //             <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
+    //           </div>
+    //           <p>Este código expira en 3 minutos.</p>
+    //         </div>
+    //       `,
+    //     });
+    //   } catch (mailError) {
+    //     console.error('⚠️ EL CORREO 2FA FALLÓ PERO CONTINUAREMOS:', mailError);
+    //     // Esto evita que el error de correo tire la sesión, y puedes ver el código OTP en la terminal si lo necesitas
+    //     console.log('🔑 OTP DE EMERGENCIA EN CONSOLA:', otpCode);
+    //   }
 
-      await this.auditService.logEvent('OTP_REQUESTED', {
-        userId: user.id,
-        email: user.email,
-        details: 'OTP generado para reto 2FA en inicio de sesión',
-      });
+    //   await this.auditService.logEvent('OTP_REQUESTED', {
+    //     userId: user.id,
+    //     email: user.email,
+    //     details: 'OTP generado para reto 2FA en inicio de sesión',
+    //   });
 
-      throw new HttpException(
-        {
-          requires_2fa: true,
-          session_id: user.id,
-          message:
-            'Se requiere autenticación de dos factores. Código OTP enviado a tu correo.',
-        },
-        HttpStatus.ACCEPTED,
-      );
-    }
+    //   throw new HttpException(
+    //     {
+    //       requires_2fa: true,
+    //       session_id: user.id,
+    //       message: 'Se requiere autenticación de dos factores. Código OTP enviado a tu correo.',
+    //     },
+    //     HttpStatus.ACCEPTED,
+    //   );
+    // }
 
     // Login Exitoso (sin 2FA)
     await this.auditService.logEvent('LOGIN_SUCCESS', {
