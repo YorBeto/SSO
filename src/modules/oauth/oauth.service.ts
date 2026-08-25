@@ -552,6 +552,21 @@ export class OAuthService {
     return url.trim().replace(/^"|"$/g, '');
   }
 
+  /**
+   * URL base de Vital ID. En producción, si no está configurada, se falla
+   * explícitamente en vez de redirigir el flujo OAuth de Alexa a localhost.
+   */
+  private get vitalIdBaseUrl(): string {
+    const base = process.env.VITAL_ID_BASE_URL;
+    if (base) return base;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'VITAL_ID_BASE_URL no está definido en producción; el account linking de Alexa no puede redirigir correctamente.',
+      );
+    }
+    return 'http://localhost:3000';
+  }
+
   private buildLoginRedirect(
     redirect_uri: string,
     client_id: string,
@@ -561,8 +576,7 @@ export class OAuthService {
     codeChallengeMethod?: string,
   ): string {
     const base = this.cleanBaseUrl(
-      process.env.OAUTH_LOGIN_URL ||
-        `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/auth/login`,
+      process.env.OAUTH_LOGIN_URL || `${this.vitalIdBaseUrl}/auth/login`,
     );
     const params = new URLSearchParams({
       redirect_uri,
@@ -586,7 +600,7 @@ export class OAuthService {
     const base = this.cleanBaseUrl(
       process.env.OAUTH_CONSENT_URL ||
         process.env.OAUTH_LOGIN_URL ||
-        `${process.env.VITAL_ID_BASE_URL || 'http://localhost:3000'}/#authorize`,
+        `${this.vitalIdBaseUrl}/#authorize`,
     );
     const sep = base.includes('?') ? '&' : '?';
     const params = new URLSearchParams();
