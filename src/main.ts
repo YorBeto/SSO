@@ -25,7 +25,7 @@ async function bootstrap() {
           Object.values(err.constraints || {}).join(', '),
         );
         return new BadRequestException({
-          code: 'AUTH-007',
+          code: 'AUTH-033',
           message:
             'Los datos proporcionados no son válidos. Verifica la información ingresada',
           details: messages,

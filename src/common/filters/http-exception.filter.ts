@@ -59,13 +59,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   private getCategoryCode(status: number): string {
+    // AUTH-005 (token faltante) y AUTH-007 (sesión revocada) están reservados
+    // exclusivamente para esos casos puntuales (jwt-auth.guard.ts, token.service.ts).
+    // No deben reutilizarse como fallback genérico: el frontend fuerza logout
+    // inmediato al recibirlos, sin importar el endpoint que los originó.
     switch (status) {
       case 400:
-        return 'AUTH-007';
+        return 'AUTH-033';
       case 401:
         return 'AUTH-001';
       case 403:
-        return 'AUTH-005';
+        return 'AUTH-034';
       case 409:
         return 'AUTH-009';
       case 423:
