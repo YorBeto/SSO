@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { getJwtSecret } from '../../../common/config/jwt-secret.js';
 
 @Injectable()
 export class TokenService {
@@ -12,11 +13,11 @@ export class TokenService {
   ) {}
 
   private get accessSecret(): string {
-    return process.env.JWT_SECRET || '';
+    return getJwtSecret('JWT_SECRET');
   }
 
   private get refreshSecret(): string {
-    return process.env.JWT_REFRESH_SECRET || '';
+    return getJwtSecret('JWT_REFRESH_SECRET');
   }
 
   private get accessExpiresIn(): string {

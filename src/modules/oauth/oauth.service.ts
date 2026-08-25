@@ -8,6 +8,7 @@ import * as bcrypt from 'bcrypt';
 import { randomBytes, randomUUID, createHash } from 'crypto';
 import { Response } from 'express';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { getJwtSecret } from '../../common/config/jwt-secret.js';
 
 /**
  * OAuth 2.0 — Authorization Server para Account Linking (Alexa).
@@ -28,11 +29,11 @@ export class OAuthService {
 
   // ── Acceso a configuración de entorno ──────────────────────────────
   private get accessSecret(): string {
-    return process.env.JWT_SECRET || '';
+    return getJwtSecret('JWT_SECRET');
   }
 
   private get refreshSecret(): string {
-    return process.env.JWT_REFRESH_SECRET || '';
+    return getJwtSecret('JWT_REFRESH_SECRET');
   }
 
   private get accessExpiresIn(): string {
