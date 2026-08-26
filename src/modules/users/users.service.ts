@@ -1,6 +1,7 @@
 import {
   Injectable,
   ConflictException,
+  NotFoundException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
@@ -17,7 +18,7 @@ export class UsersService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService, // <-- Inyectar MailService
     private readonly otpService: OtpService,
-  ) {}
+  ) { }
 
   async createUser(dto: CreateUserDto) {
     const {
@@ -127,5 +128,97 @@ export class UsersService {
         error: 'Unhandled exception',
       });
     }
+  }
+
+  async findUserByIdWithPerson(id: string) {
+    const user = await this.prisma.users.findUnique({
+      where: { id },
+      include: { persons: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        code: 'AUTH-012',
+        message: 'Usuario no encontrado',
+        error: 'Not Found',
+      });
+    }
+
+    return {
+      success: true,
+      data: {
+        id: user.id,
+        email: user.email,
+        phone: user.phone,
+        is_active: user.is_active,
+        two_factor_method: user.two_factor_method,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        persons: user.persons, // Aquí van todos los datos personales (nombre, apellidos, fecha, género, dirección)
+      },
+    };
+  }
+
+  async findAllUsersWithPersons() {
+    const users = await this.prisma.users.findMany({
+      where: { deleted_at: null },
+      include: { persons: true },
+      orderBy: { created_at: 'desc' }
+    });
+    return users.map(u => ({
+      id: u.id,
+      email: u.email,
+      phone: u.phone,
+      is_active: u.is_active,
+      first_name: u.persons?.first_name || '',
+      paternal_last_name: u.persons?.paternal_last_name || '',
+      maternal_last_name: u.persons?.maternal_last_name || '',
+      birth_date: u.persons?.birth_date ? u.persons.birth_date.toISOString().split('T')[0] : '',
+      gender: u.persons?.gender || 'M',
+      address: u.persons?.address || '',
+    }));
+  }
+
+  async updateUserByAdmin(id: string, dto: any) {
+    const user = await this.prisma.users.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    let passwordHash = user.password_hash;
+    if (dto.password && dto.password.trim() !== '') {
+      passwordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    return await this.prisma.$transaction(async (prisma) => {
+      if (user.person_id) {
+        await prisma.persons.update({
+          where: { id: user.person_id },
+          data: {
+            first_name: dto.first_name,
+            paternal_last_name: dto.paternal_last_name,
+            maternal_last_name: dto.maternal_last_name,
+            birth_date: dto.birth_date ? new Date(dto.birth_date) : undefined,
+            gender: dto.gender,
+            address: dto.address,
+          },
+        });
+      }
+
+      return await prisma.users.update({
+        where: { id },
+        data: {
+          email: dto.email,
+          phone: dto.phone,
+          is_active: dto.is_active,
+          password_hash: passwordHash,
+        },
+      });
+    });
+  }
+
+  async deleteUser(id: string) {
+    return await this.prisma.users.update({
+      where: { id },
+      data: { deleted_at: new Date(), is_active: false },
+    });
   }
 }

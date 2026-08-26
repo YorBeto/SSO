@@ -15,6 +15,7 @@ import { TokenService } from './services/token.service.js';
 import { OtpService } from '../otp/otp.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { MailService } from '../../modules/mail/mail.service.js'; // Ajusta la ruta relativa según el archivo
+import { RegisterAdminDto } from './dto/register-admin.dto.js';
 
 @Injectable()
 export class AuthService {
@@ -373,5 +374,93 @@ export class AuthService {
       message: `La autenticación de dos factores ha sido ${action} exitosamente`,
       two_factor_enabled: dto.enabled,
     };
+  }
+
+  async registerAdmin(dto: RegisterAdminDto) {
+    // 1. Verificar si el correo ya existe
+    const existingUser = await this.prisma.users.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('El correo electrónico ya está registrado');
+    }
+
+    // 2. Encriptar contraseña
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    // 3. Crear la persona y el usuario en una transacción
+    const newUser = await this.prisma.$transaction(async (prisma) => {
+      const person = await prisma.persons.create({
+        data: {
+          first_name: dto.first_name,
+          paternal_last_name: dto.paternal_last_name,
+          maternal_last_name: dto.maternal_last_name || null,
+          birth_date: new Date(dto.birth_date),
+          gender: dto.gender as any,
+          address: dto.address || null,
+        },
+      });
+
+      const user = await prisma.users.create({
+        data: {
+          email: dto.email,
+          password_hash: passwordHash,
+          phone: dto.phone,
+          person_id: person.id,
+          is_active: true,
+          two_factor_method: false,
+        },
+        include: { persons: true },
+      });
+
+      return user;
+    });
+
+    return {
+      success: true,
+      message: 'Administrador registrado exitosamente',
+      data: {
+        id: newUser.id,
+        email: newUser.email,
+      },
+    };
+  }
+
+  async updateAdmin(vitalId: string, dto: any) {
+    const user = await this.prisma.users.findUnique({ where: { id: vitalId } });
+    if (!user) throw new NotFoundException('Usuario no encontrado en SSO');
+
+    let newPasswordHash: string | undefined = undefined;
+
+    if (dto.password && dto.password.trim() !== '') {
+      newPasswordHash = await bcrypt.hash(dto.password, 10);
+    }
+
+    await this.prisma.$transaction(async (prisma) => {
+      await prisma.persons.update({
+        where: { id: user.person_id },
+        data: {
+          first_name: dto.first_name,
+          paternal_last_name: dto.paternal_last_name,
+          maternal_last_name: dto.maternal_last_name,
+          birth_date: dto.birth_date ? new Date(dto.birth_date) : undefined,
+          gender: dto.gender as any,
+          address: dto.address,
+        },
+      });
+
+      await prisma.users.update({
+        where: { id: vitalId },
+        data: {
+          email: dto.email,
+          phone: dto.phone,
+          is_active: dto.is_active,
+          ...(newPasswordHash && { password_hash: newPasswordHash }),
+        },
+      });
+    });
+
+    return { success: true, message: 'Administrador actualizado en SSO' };
   }
 }
