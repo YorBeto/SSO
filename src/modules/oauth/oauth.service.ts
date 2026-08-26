@@ -162,10 +162,7 @@ export class OAuthService {
     // no aprobó la vinculación, redirigir a la pantalla de consentimiento de la
     // web de Vital ID. Solo se emite el code cuando query.consent === 'approved'.
     if (query.consent !== 'approved') {
-      const consentUrl = this.buildConsentRedirect(
-        query,
-        vitalId,
-      );
+      const consentUrl = this.buildConsentRedirect(query, vitalId);
       return res.redirect(consentUrl);
     }
 
@@ -330,32 +327,55 @@ export class OAuthService {
     if (!accessToken)
       this.oauthError('Token de acceso no proporcionado', 'invalid_token');
 
-    let payload: any;
+    // Soporta dos formatos: JWT (nuevo, recomendado) y UUID opaco (compatibilidad
+    // con vinculaciones previas donde Alexa almacenó el id/jti en lugar del JWT).
+    let payload: any = null;
+    let tokenRecord: any = null;
+
+    // Intento 1: JWT
     try {
       payload = await this.jwtService.verifyAsync(accessToken, {
         secret: this.accessSecret,
       });
+      tokenRecord = await this.prisma.oauth_tokens.findFirst({
+        where: {
+          access_token_jti: payload.jti,
+          revoked_at: null,
+          access_expires_at: { gt: new Date() },
+        },
+      });
+      if (!tokenRecord) {
+        this.oauthError(
+          'El token de acceso fue revocado o expiró',
+          'invalid_token',
+        );
+      }
     } catch {
-      this.oauthError(
-        'El token de acceso es inválido o expiró',
-        'invalid_token',
-      );
+      // Intento 2: UUID opaco (id o jti) — fallback para tokens de 36 chars
+      if (/^[0-9a-f-]{36}$/i.test(accessToken)) {
+        tokenRecord = await this.prisma.oauth_tokens.findFirst({
+          where: {
+            OR: [{ id: accessToken }, { access_token_jti: accessToken }],
+            revoked_at: null,
+            access_expires_at: { gt: new Date() },
+          },
+        });
+        if (!tokenRecord) {
+          this.oauthError(
+            'El token de acceso es inválido o expiró',
+            'invalid_token',
+          );
+        }
+        payload = { sub: tokenRecord.user_id, jti: tokenRecord.access_token_jti };
+      } else {
+        this.oauthError(
+          'El token de acceso es inválido o expiró',
+          'invalid_token',
+        );
+      }
     }
 
-    // Verificar que el jti sigue activo (no revocado)
-    const tokenRecord = await this.prisma.oauth_tokens.findFirst({
-      where: {
-        access_token_jti: payload.jti,
-        revoked_at: null,
-        access_expires_at: { gt: new Date() },
-      },
-    });
-    if (!tokenRecord)
-      this.oauthError(
-        'El token de acceso fue revocado o expiró',
-        'invalid_token',
-      );
-
+    // Buscar usuario ligado al token
     const user = await this.prisma.users.findUnique({
       where: { id: payload.sub },
       include: { persons: true },
@@ -379,8 +399,7 @@ export class OAuthService {
    */
   async revokeToken(body: any, authorization?: string) {
     const { token, token_type_hint } = body;
-    if (!token)
-      this.oauthError('Falta el token a revocar', 'invalid_request');
+    if (!token) this.oauthError('Falta el token a revocar', 'invalid_request');
 
     // Autenticar al cliente (Basic o body), igual que en /token
     const clientCredentials = this.resolveClientCredentials(
@@ -421,7 +440,8 @@ export class OAuthService {
           const payload: any = await this.jwtService.verifyAsync(token, {
             secret,
           });
-          target = tokens.find((t) => t.access_token_jti === payload.jti) || null;
+          target =
+            tokens.find((t) => t.access_token_jti === payload.jti) || null;
           if (target) break;
         } catch {
           // intentar con el siguiente secreto
@@ -569,7 +589,9 @@ export class OAuthService {
       ...(state ? { state } : {}),
       ...(scope ? { scope } : {}),
       ...(codeChallenge ? { code_challenge: codeChallenge } : {}),
-      ...(codeChallengeMethod ? { code_challenge_method: codeChallengeMethod } : {}),
+      ...(codeChallengeMethod
+        ? { code_challenge_method: codeChallengeMethod }
+        : {}),
     });
     return `${base}?${params.toString()}`;
   }

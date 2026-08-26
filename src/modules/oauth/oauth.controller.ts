@@ -12,7 +12,12 @@ import {
   Headers,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { OAuthService } from './oauth.service.js';
 import { TokenRequestDto } from './dto/token-request.dto.js';
