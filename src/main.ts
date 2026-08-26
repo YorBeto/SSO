@@ -21,13 +21,18 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
       transform: true,
       exceptionFactory: (errors) => {
+        // 👇 ¡ESTE LOG FORZARÁ A LA CONSOLA DEL SSO A GRITAR QUÉ FALLÓ!
+        console.error("🚨 [SSO-VALIDATION-PIPE ERROR] Fallaron las validaciones del DTO:");
+        errors.forEach(err => {
+          console.error(`- Campo: ${err.property}`, err.constraints);
+        });
+
         const messages = errors.map((err) =>
           Object.values(err.constraints || {}).join(', '),
         );
         return new BadRequestException({
           code: 'AUTH-007',
-          message:
-            'Los datos proporcionados no son válidos. Verifica la información ingresada',
+          message: 'Los datos proporcionados no son válidos. Verifica la información ingresada',
           details: messages,
           error: 'Bad Request',
         });

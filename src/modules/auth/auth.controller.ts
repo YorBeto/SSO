@@ -5,6 +5,7 @@ import {
   Patch,
   Delete,
   Body,
+  Put,
   Param,
   HttpCode,
   HttpStatus,
@@ -35,6 +36,8 @@ import { OtpRequestDto } from './dto/otp-request.dto.js';
 import { OtpVerifyDto } from './dto/otp-verify.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { Toggle2FADto } from './dto/toggle-2fa.dto.js';
+import { RegisterAdminDto } from './dto/register-admin.dto.js';
+import { UpdateAdminDto } from './dto/update-admin.dto.js';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -45,7 +48,7 @@ export class AuthController {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly sessionsService: SessionsService,
-  ) {}
+  ) { }
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -136,6 +139,21 @@ export class AuthController {
   @ApiOperation({ summary: 'Obtener información del usuario autenticado' })
   async getProfile(@Req() req: any) {
     return this.authService.getProfile(req.user?.sub);
+  }
+
+  @Get('user/:id')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Obtener información de un usuario por su ID (Para microservicios)' })
+  async getUserById(@Param('id') id: string) {
+    const userProfile = await this.authService.getProfile(id);
+
+    return {
+      email: userProfile.email,
+      person: {
+        first_name: userProfile.first_name,
+        paternal_last_name: userProfile.paternal_last_name
+      }
+    };
   }
 
   @Post('activate-account')
@@ -307,4 +325,17 @@ export class AuthController {
   async revokeAllSessions(@Req() req: any) {
     return this.sessionsService.revokeAllSessions(req.user?.sub);
   }
+
+  @Post('admin/register') 
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Registro directo de usuarios administradores' })
+  async registerAdmin(@Body() dto: RegisterAdminDto) {
+    return this.authService.registerAdmin(dto);
+  }
+
+  @Put('admin/update/:id')
+  async updateAdmin(@Param('id') id: string, @Body() dto: UpdateAdminDto) {
+    return this.authService.updateAdmin(id, dto);
+  }
+
 }

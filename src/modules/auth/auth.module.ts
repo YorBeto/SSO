@@ -20,7 +20,7 @@ import { MailModule } from '../mail/mail.module.js';
     JwtModule.register({
       global: true,
       secret: process.env.JWT_SECRET,
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN || '2h') as any },
     }),
   ],
   providers: [
